@@ -328,7 +328,7 @@ async function setWeights(trait) {
       type: 'input',
       name: names[file] + '_weight',
       message: 'How many ' + names[file] + ' ' + trait + ' should there be?',
-      default: 1 || parseInt(Math.round(10000 / files.length)),
+      default: parseInt(Math.round(100 / files.length)),
     });
   });
   const selectedWeights = await inquirer.prompt(weightPrompt);
@@ -372,11 +372,7 @@ async function generateImages() {
         let pickedImgId = pickRandom(weightedTraits[id]);
         picked.push(pickedImgId);
         let pickedImg = weightedTraits[id][pickedImgId];
-        if (pickedImg) {
-			images.push(basePath + traits[id] + '/' + pickedImg);
-		}
-		else {
-		}
+        images.push(basePath + traits[id] + '/' + pickedImg);
       });
 
       if (existCombination(images)) {
