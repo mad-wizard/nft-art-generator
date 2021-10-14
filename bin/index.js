@@ -88,6 +88,7 @@ async function main() {
   await asyncForEach(traits, async trait => {
     await setWeights(trait);
   });
+  config.weights = weights;
   const generatingImages = ora('Generating '+generateLimit+' images');
   generatingImages.color = 'yellow';
   generatingImages.start();
@@ -196,8 +197,8 @@ async function generateCountPrompt() {
       message: 'How many should be generated?',
     },
   ]);
-  config.count = parseInt(count);
-  generateLimit = parseInt(count);
+  config.count = count;
+  generateLimit = count;
 }
 
 async function generateMetadataPrompt() {
@@ -325,20 +326,9 @@ async function setWeights(trait) {
     return;
   }
   const files = await getFilesForTrait(trait);
-  const weightPrompt = [];
   files.forEach((file, i) => {
-    weightPrompt.push({
-      type: 'input',
-      name: names[file] + '_weight',
-      message: 'How many ' + names[file] + ' ' + trait + ' should there be?',
-      default: 1 || parseInt(Math.round(10000 / files.length)),
-    });
+    weights[file] = 1;
   });
-  const selectedWeights = await inquirer.prompt(weightPrompt);
-  files.forEach((file, i) => {
-    weights[file] = selectedWeights[names[file] + '_weight'];
-  });
-  config.weights = weights;
 }
 
 //ASYNC FOREACH
@@ -358,14 +348,12 @@ async function generateWeightedTraits() {
         traitWeights.push(file);
       }
     });
-    console.log("Weighted traits: ", weightedTraits);
     weightedTraits.push(traitWeights);
   }
 }
 
 //GENARATE IMAGES
 async function generateImages() {
-  console.log("generating "+generateLimit+" images...");
   let noMoreMatches = 0;
   let images = [];
   let id = 0;
