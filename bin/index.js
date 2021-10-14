@@ -23,12 +23,12 @@ let order = [];
 let weights = {};
 let names = {};
 let weightedTraits = [];
+let generateLimit = 5000;
 let seen = [];
 let metaData = {};
 let config = {
   metaData: {},
   useCustomNames: null,
-  deleteDuplicates: null,
   generateMetadata: null,
 };
 let argv = require('minimist')(process.argv.slice(2));
@@ -65,9 +65,9 @@ main();
 
 async function main() {
   await loadConfig();
+  await generateCountPrompt();
   await getBasePath();
   await getOutputPath();
-  await checkForDuplicates();
   await generateMetadataPrompt();
   if (config.generateMetadata) {
     await metadataSettings();
@@ -88,7 +88,7 @@ async function main() {
   await asyncForEach(traits, async trait => {
     await setWeights(trait);
   });
-  const generatingImages = ora('Generating images');
+  const generatingImages = ora('Generating '+generateLimit+' images');
   generatingImages.color = 'yellow';
   generatingImages.start();
   await generateImages();
@@ -184,17 +184,20 @@ async function getOutputPath() {
   config.outputPath = outputPath;
 }
 
-async function checkForDuplicates() {
-  if (config.deleteDuplicates !== null) return;
-  let { checkDuplicates } = await inquirer.prompt([
+async function generateCountPrompt() {
+  if (config.count) {
+    generateLimit = config.count;
+    return;
+  }
+  let { count } = await inquirer.prompt([
     {
-      type: 'confirm',
-      name: 'checkDuplicates',
-      message:
-        'Should duplicated images be deleted? (Might result in less images then expected)',
+      type: 'input',
+      name: 'count',
+      message: 'How many should be generated?',
     },
   ]);
-  config.deleteDuplicates = checkDuplicates;
+  config.count = parseInt(count);
+  generateLimit = parseInt(count);
 }
 
 async function generateMetadataPrompt() {
@@ -317,7 +320,6 @@ async function setNames(trait) {
 
 //SET WEIGHTS FOR EVERY TRAIT
 async function setWeights(trait) {
-console.log("setting weights", trait, config.weights);
   if (config.weights) {
     weights = config.weights;
     return;
@@ -356,65 +358,30 @@ async function generateWeightedTraits() {
         traitWeights.push(file);
       }
     });
+    console.log("Weighted traits: ", weightedTraits);
     weightedTraits.push(traitWeights);
   }
 }
 
 //GENARATE IMAGES
 async function generateImages() {
+  console.log("generating "+generateLimit+" images...");
   let noMoreMatches = 0;
   let images = [];
   let id = 0;
   await generateWeightedTraits();
-  if (config.deleteDuplicates) {
-    while (weightedTraits[0].length > 0 && noMoreMatches < 20000) {
-      let picked = [];
-      var fail = false;
-      order.forEach(id => {
-        let pickedImgId = pickRandom(weightedTraits[id]);
-        picked.push(pickedImgId);
-        let pickedImg = weightedTraits[id][pickedImgId];
-        if (pickedImg) {
-		images.push(basePath + traits[id] + '/' + pickedImg);
-	}
-	else {
-		fail=true;
-	}
-      });
 
-      if (fail == true) {
-      	break;
-      }
-
-      if (existCombination(images)) {
-        noMoreMatches++;
-        images = [];
-      } else {
-        generateMetadataObject(id, images);
-        noMoreMatches = 0;
-        order.forEach((id, i) => {
-          remove(weightedTraits[id], picked[i]);
-        });
-        seen.push(images);
-        const b64 = await mergeImages(images, { Canvas: Canvas, Image: Image });
-        await ImageDataURI.outputFile(b64, outputPath + `${id}.png`);
-        images = [];
-        id++;
-      }
-    }
-  } else {
-    while (weightedTraits[0].length > 0) {
-      order.forEach(id => {
-        images.push(
-          basePath + traits[id] + '/' + pickRandomAndRemove(weightedTraits[id])
-        );
-      });
-      generateMetadataObject(id, images);
-      const b64 = await mergeImages(images, { Canvas: Canvas, Image: Image });
-      await ImageDataURI.outputFile(b64, outputPath + `${id}.png`);
-      images = [];
-      id++;
-    }
+  while (id < generateLimit) {
+    order.forEach(id => {
+      images.push(
+        basePath + traits[id] + '/' + getImage(weightedTraits[id])
+      );
+    });
+    generateMetadataObject(id, images);
+    const b64 = await mergeImages(images, { Canvas: Canvas, Image: Image });
+    await ImageDataURI.outputFile(b64, outputPath + `${id}.png`);
+    images = [];
+    id++;
   }
 }
 
@@ -424,10 +391,9 @@ function randomNumber(min, max) {
 }
 
 //PICKS A RANDOM INDEX INSIDE AN ARRAY RETURNS IT AND THEN REMOVES IT
-function pickRandomAndRemove(array) {
+function getImage(array) {
   const toPick = randomNumber(0, array.length - 1);
   const pick = array[toPick];
-  array.splice(toPick, 1);
   return pick;
 }
 
