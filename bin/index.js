@@ -327,7 +327,7 @@ async function setWeights(trait) {
   }
   const files = await getFilesForTrait(trait);
   files.forEach((file, i) => {
-    weights[file] = 1;
+    weights[file] = 100;
   });
 }
 
