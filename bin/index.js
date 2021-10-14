@@ -117,7 +117,7 @@ async function main() {
 
 //GET THE BASEPATH FOR THE IMAGES
 async function getBasePath() {
-  if (config.basePath !== undefined) { 
+  if (config.basePath !== undefined) {
     basePath = config.basePath;
     return;
   }
@@ -317,7 +317,8 @@ async function setNames(trait) {
 
 //SET WEIGHTS FOR EVERY TRAIT
 async function setWeights(trait) {
-  if (config.weights && Object.keys(config.weights).length === Object.keys(names).length ) {
+console.log("setting weights", trait, config.weights);
+  if (config.weights) {
     weights = config.weights;
     return;
   }
@@ -380,7 +381,7 @@ async function generateImages() {
 		fail=true;
 	}
       });
-      
+
       if (fail == true) {
       	break;
       }
